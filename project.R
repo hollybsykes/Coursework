@@ -6,6 +6,7 @@ set.seed(2305679)
     n<-sigma*(qnorm(1-alpha)-qnorm(beta))^2/delta^2
     return(n)
   }
+#using the parameters of the trial
 initial(0.25,0.2,0.05,0.2)
 #38.64098 , round up no 39=n1
 #choose n2=78 = 39*2
@@ -13,7 +14,9 @@ initial(0.25,0.2,0.05,0.2)
 #now we want to find an appropriate gamma and alpha
 #finding the expected sample size for any hypothesis
 evaluate_design <- function(gamma, lambda, n1, n2, theta) {
+  
   #stage 1
+  
   #set number of simulations 
   M1 <- 10^4
   
@@ -49,22 +52,26 @@ evaluate_design <- function(gamma, lambda, n1, n2, theta) {
   #find the type I and type II error using monte carlo estimates
   return(c(typeI = sum(fut1>c1)/M1, typeII=sum(fut2>c2)/M2))
 }
-#example
+#example - test it works
 evaluate_design(0.4,0.75,50,70,0.5)
 
 #we want to do a grid search using this function fro type I and type II errors
 #create a data frame of all different pairs of gamma and lambda
-gamma<- seq(0.01,1,0.01)
-lambda<- seq(0.01,1,0.01)
+gamma<- seq(0.05,1,0.05)
+lambda<- seq(0.05,1,0.05)
 theta=0.5
 df<- expand.grid(gamma=gamma,lambda=lambda)
-df # that gives 32 rows
+df
 
-df[1]
+#change the function to allow for a grid search
 evaluate_design_gridsearch <- function(x, n1, n2, theta) {
+  
+  #extract values of gamma and lambda form data frame
   gamma<- x[1]
   lambda<- x[2]
+  
   #stage 1
+  
   #set number of simulations 
   M1 <- 10^4
   
@@ -74,22 +81,28 @@ evaluate_design_gridsearch <- function(x, n1, n2, theta) {
   #find posterior distribution parameters
   a1 <- 0.5 + y1
   b1 <- 0.5 + n1 - y1
+ 
   #find probability of futility (posterior distribution)
   fut1 <- pbeta(theta, a1, b1)
+  
   #decision value
   c1 <- 1 - lambda * (n1 / n2)^gamma
   
   #number of successes, is used in stage 2
   M2<- sum(fut1>c1)
+  
   #simulation y2 
   y2 <- rbinom(M2, n2, theta)
+  
   #set new posterior parameters
   a2 <- 0.5 + y2
   b2<- 0.5 + n2 - y2
+  
   #find propbability of futility
   fut2 <- pbeta(theta, a2, b2)
   #find decision value
   c2<- 1 - lambda * (n2 / n2)^gamma
+  
   #find the type I and type II error using monte carlo estimates
   return(c(typeI = sum(fut1>c1)/M1, typeII=sum(fut2>c2)/M2))
 }
@@ -132,17 +145,66 @@ sample_size <- function(x, n1, n2, theta) {
 }
 
 samplesize = apply(df2, 1, sample_size, n1=39, n2=78, theta=0.5)
-which(min)
+min(samplesize)
 
+t<-which(round(samplesize,5)==40.03841)
+t
+# how do you decide which one
+df2
+df3<-df2[t,]
+df3
+#question3 - how does the changing the hypothesis value change the error values
 
-#use vectorisation- as this too long of a method -> improves efficiency
-#fix n1 and n2
-#okay not to do a formal optimisation but do a comparison of parameters
-#compare a few designs with different n1,  n2, gamma and lambda
+#create a grid of different values of theta
+theta_grid<- seq(0.1,0.99,0.01)
+theta_expand<-expand.grid(theta=theta_grid)
 
-#then ignore all options which dont meet constraints of alpha and beta
-#include graph of theta
+#change function to except different values of theta
+evaluate_design_theta <- function(gamma, lambda, n1, n2, x) {
+  
+  #stage 1
+  theta<-x[1]
+  #set number of simulations 
+  M1 <- 10^4
+  
+  #simulation observations using prior distribution
+  y1 <- rbinom(M1, n1, theta)
+  
+  #find posterior distribution parameters
+  a1 <- 0.5 + y1
+  b1 <- 0.5 + n1 - y1
+  
+  #find probability of futility (posterior distribution)
+  fut1 <- pbeta(theta, a1, b1)
+  
+  #decision value
+  c1 <- 1 - lambda * (n1 / n2)^gamma
+  
+  #number of successes, is used in stage 2
+  M2<- sum(fut1 > c1)
+  
+  #simulation y2 
+  y2 <- rbinom(M2, n2, theta)
+  
+  #set new posterior parameters
+  a2 <- 0.5 + y2
+  b2 <- 0.5 + n2 - y2
+  
+  #find propbability of futility
+  fut2 <- pbeta(theta, a2, b2)
+  
+  #find decision value
+  c2<- 1 - lambda * (n2 / n2)^gamma
+  
+  #find the type I and type II error using monte carlo estimates
+  return(c(typeI = sum(fut1>c1)/M1, typeII=sum(fut2>c2)/M2))
+}
 
-#in our case probability of futility is the likelihood
-#prob_y1(y1, n1, theta) function only including the likelihood
-#for binomial outcome what is the probability of getting a certain number of outcomes
+#apply values of theta to the function
+fun1<- apply(theta_expand, 1, evaluate_design_theta, gamma =0.4, lambda=0.05, n1=38, n2=78)
+fun1
+
+#plot theta against the the errors setting other parameters to be constant
+par(mfrow=c(1,2))
+plot(theta_grid,fun1[1,], xlab="theta", ylab="type I" )
+plot(theta_grid, fun1[2,], xlab="theta", ylab="typeII")
