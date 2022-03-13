@@ -13,6 +13,7 @@ initial(0.25, 0.2, 0.05, 0.2)
 # 38.64098 , round up no 39=n1
 # choose n2=78 = 39*2
 
+
 # now we want to find an appropriate gamma and alpha
 # finding the expected sample size for any hypothesis
 #could it be 2 values of theta
@@ -112,9 +113,9 @@ evaluate_design_gridsearch <- function(x, n1, n2, theta) {
   return(c(typeI = sum(fut2 < c2 & fut1 < c1) / M1))
 }
 
-type_I <- apply(df, 1, evaluate_design_gridsearch, n1 = 38, n2 = 78, theta = 0.5)
+type_I <- apply(df, 1, evaluate_design_gridsearch, n1 = 39, n2 = 78, theta = 0.5)
 type_I
-typeII <- apply(df, 1, evaluate_design_gridsearch, n1=38, n2 = 78, theta = 0.7)
+typeII <- apply(df, 1, evaluate_design_gridsearch, n1=39, n2 = 78, theta = 0.7)
 type_II <- 1-typeII
 
 type_I_II <- cbind(type_I, type_II)
@@ -123,6 +124,8 @@ type_I_II <- cbind(type_I, type_II)
 # find which values of lambda and gamma satisfy the constraints on errors
 v <- which(type_I_II[,1] <= 0.05 & type_I_II[,2] <= 0.2)
 v
+
+type_I_II
 
 
 # make a new data frame of appropiate gamma and lambdas
@@ -154,7 +157,7 @@ sample_size <- function(x, n1, n2, theta) {
   sum(n1 * stops * y_1_probs + n2 * (!stops) *y_1_probs)
 }
 
-samplesize <- apply(df2, 1, sample_size, n1 = 39, n2 = 78, theta = 0.5)
+samplesize <- apply(df2, 1, sample_size, n1 = 20, n2 = 40, theta = 0.5)
 
 round_up=ceiling(samplesize)
 
@@ -194,4 +197,60 @@ fun1
 # plot theta against the the errors setting gamma and lambda to be constant
 par(mfrow=c(1,2))
 plot(theta_grid, fun1, xlab="theta", ylab="expected sample size")
-plot(theta_grid, 1-fun1, xlab="theta", ylab="type II error")
+
+
+
+#sensitivity of the error rates to the null/alternative hypothesis values
+evaluate_design_gridtheta <- function(gamma, lambda, n1, n2, x) {
+  
+  # extract values of gamma and lambda form data frame
+  theta<-x[1]
+  
+  # stage 1
+  
+  # set number of simulations
+  M1 <- 10^4
+  
+  # simulation observations using prior distribution
+  y1 <- rbinom(M1, n1, theta)
+  
+  # find posterior distribution parameters
+  a1 <- 0.5 + y1
+  b1 <- 0.5 + n1 - y1
+  
+  # find probability of futility (posterior distribution)
+  fut1 <- pbeta(0.5, a1, b1)
+  
+  # decision value
+  c1 <- 1 - lambda * (n1 / n2)^gamma
+  
+  # number of successes, is used in stage 2
+  #M2 <- sum(fut1 < c1)
+  
+  # simulation y2
+  y2 <- rbinom(M1, n2 - n1, theta)
+  
+  # set new posterior parameters
+  a2 <- 0.5 + y1 + y2 
+  b2 <- 0.5 + n2- y2 - y1
+  
+  # find probability of futility
+  fut2 <- pbeta(0.5, a2, b2)
+  # find decision value
+  c2 <- 1 - lambda * (n2 / n2)^gamma
+  
+  # find the type I and type II error using monte carlo estimates
+  return(c(typeI = sum(fut2 < c2 & fut1 < c1) / M1))
+}
+
+type_I <- apply(theta_expand, 1, evaluate_design_gridtheta, n1 = 39, n2 = 78, gamma=5, lambda=0.95)
+length(type_I)
+type_II <- 1-type_I
+
+par(mfrow=c(1,2))
+plot(theta_grid, type_I, xlab="theta", ylab = "Type I error")
+plot(theta_grid, type_II, xlab="theta", ylab = "Type II error")
+
+
+
+
