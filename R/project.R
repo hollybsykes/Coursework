@@ -75,6 +75,7 @@ evaluate_design_gridsearch <- function(x, n1, n2, theta) {
   # extract values of gamma and lambda form data frame
   gamma <- x[1]
   lambda <- x[2]
+  
 
   # stage 1
 
@@ -246,11 +247,74 @@ evaluate_design_gridtheta <- function(gamma, lambda, n1, n2, x) {
 type_I <- apply(theta_expand, 1, evaluate_design_gridtheta, n1 = 39, n2 = 78, gamma=5, lambda=0.95)
 length(type_I)
 type_II <- 1-type_I
+cbind(type_I, type_II, theta_grid)
 
 par(mfrow=c(1,2))
 plot(theta_grid, type_I, xlab="theta", ylab = "Type I error")
 plot(theta_grid, type_II, xlab="theta", ylab = "Type II error")
 
+#evaluation
+#theta_0=0.4
+initial(0.24, 0.3, 0.05, 0.2)
+#n1=17, n2=34
+# change the function to allow for a grid search
+type_I_eval <- apply(df, 1, evaluate_design_gridsearch, n1 =17 , n2 = 34, theta=0.4)
+type_I_eval
+typeII_eval <- apply(df, 1, evaluate_design_gridsearch, n1= 17, n2 = 34, theta=0.7)
+type_II_eval <- 1-typeII_eval
+
+type_I_II_eval <- cbind(type_I_eval, type_II_eval)
+#head(type_I_II)
+#tail(type_I_II)
+# find which values of lambda and gamma satisfy the constraints on errors
+v_eval <- which(type_I_II_eval[,1] <= 0.05 & type_I_II_eval[,2] <= 0.2)
+v_eval
+
+type_eval<-type_I_II_eval[v_eval,]
 
 
+# make a new data frame of appropiate gamma and lambdas
+df2_eval <- df[v_eval, ]
+df2_eval
+
+samplesize_eval <- apply(df2_eval, 1, sample_size, n1 = 10, n2 = 20, theta = 0.4)
+samplesize_eval
+round_up_eval=ceiling(samplesize_eval)
+
+final_eval<- cbind(df2_eval, round_up_eval, type_eval)
+final_eval
+
+yes<-which(round_up_eval==12)
+final_eval[yes,]
+
+#repeat for theta_0= 0.6
+initial(0.24, 0.2, 0.05, 0.2)
+#n1=5, n2=10
+# change the function to allow for a grid search
+type_I_eval2 <- apply(df, 1, evaluate_design_gridsearch, n1 = 5, n2 = 10, theta=0.6)
+type_I_eval2
+typeII_eval2 <- apply(df, 1, evaluate_design_gridsearch, n1= 5, n2 = 10, theta=0.6)
+type_II_eval2 <- 1-typeII_eval2
+
+type_I_II_eval2 <- cbind(type_I_eval2, type_II_eval2)
+#head(type_I_II)
+#tail(type_I_II)
+# find which values of lambda and gamma satisfy the constraints on errors
+v <- which(type_I_II_eval2[,1] <= 0.05 & type_I_II_eval2[,2] <= 0.2)
+v
+
+type_I_II
+
+
+# make a new data frame of appropiate gamma and lambdas
+df2_eval <- df[v, ]
+df2_eval
+
+samplesize_eval <- apply(df2_eval, 1, sample_size, n1 = 10, n2 = 20, theta = 0.4)
+samplesize_eval
+round_up_eval=ceiling(samplesize_eval)
+
+final<- cbind(df2_eval, round_up_eval)
+final
+type_I_II[190,]
 
